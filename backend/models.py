@@ -67,6 +67,7 @@ class User(AbstractUser):
     REQUIRED_FIELDS = []
     objects = UserManager()
     USERNAME_FIELD = 'email'
+    middle_name = models.CharField(verbose_name='Отчетство',max_length=40, blank=True)
     email = models.EmailField(_('email address'), unique=True)
     company = models.CharField(verbose_name='Компания', max_length=40, blank=True)
     position = models.CharField(verbose_name='Должность', max_length=40, blank=True)
@@ -91,7 +92,7 @@ class User(AbstractUser):
     type = models.CharField(verbose_name='Тип пользователя', choices=USER_TYPE_CHOICES, max_length=5, default='buyer')
 
     def __str__(self):
-        return f'{self.first_name} {self.last_name}'
+        return f'{self.first_name} {self.last_name} {self.middle_name}'
 
     class Meta:
         verbose_name = 'Пользователь'

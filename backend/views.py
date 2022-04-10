@@ -32,7 +32,7 @@ class RegisterAccount(APIView):
     def post(self, request, *args, **kwargs):
 
         # проверяем обязательные аргументы
-        if {'first_name', 'last_name', 'email', 'password', 'company', 'position'}.issubset(request.data):
+        if {'first_name', 'last_name', 'middle_name', 'email', 'password', 'company', 'position'}.issubset(request.data):
             errors = {}
 
             # проверяем пароль на сложность
@@ -226,7 +226,7 @@ class BasketView(APIView):
             try:
                 items_dict = load_json(items_sting)
             except ValueError:
-                JsonResponse({'Status': False, 'Errors': 'Неверный формат запроса'})
+                return JsonResponse({'Status': False, 'Errors': 'Неверный формат запроса'})
             else:
                 basket, _ = Order.objects.get_or_create(user_id=request.user.id, state='basket')
                 objects_created = 0
@@ -243,7 +243,7 @@ class BasketView(APIView):
 
                     else:
 
-                        JsonResponse({'Status': False, 'Errors': serializer.errors})
+                        return JsonResponse({'Status': False, 'Errors': serializer.errors})
 
                 return JsonResponse({'Status': True, 'Создано объектов': objects_created})
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
@@ -301,7 +301,6 @@ class PartnerUpdate(APIView):
     def post(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
             return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
-
 
         if request.user.type != 'shop':
             return JsonResponse({'Status': False, 'Error': 'Только для магазинов'}, status=403)
@@ -388,6 +387,8 @@ class PartnerOrders(APIView):
     def get(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
             return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
+
+        print(request.user.type)
 
         if request.user.type != 'shop':
             return JsonResponse({'Status': False, 'Error': 'Только для магазинов'}, status=403)
@@ -504,7 +505,6 @@ class OrderView(APIView):
                         contact_id=request.data['contact'],
                         state='new')
                 except IntegrityError as error:
-                    print(error)
                     return JsonResponse({'Status': False, 'Errors': 'Неправильно указаны аргументы'})
                 else:
                     if is_updated:

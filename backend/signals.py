@@ -69,7 +69,7 @@ def new_order_signal(user_id, **kwargs):
         # title:
         f"Обновление статуса заказа",
         # message:
-        'Заказ сформирован',
+        f'{user} Ваш заказ сформирован',
         # from:
         settings.EMAIL_HOST_USER,
         # to:
