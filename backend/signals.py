@@ -3,7 +3,7 @@ from django.core.mail import EmailMultiAlternatives
 from django.dispatch import receiver, Signal
 from django_rest_passwordreset.signals import reset_password_token_created
 
-from backend.models import ConfirmEmailToken, User
+from backend.models import ConfirmEmailToken, User, Order
 
 new_user_registered = Signal()
 
@@ -43,12 +43,11 @@ def new_user_registered_signal(user_id, **kwargs):
     """
     # send an e-mail to the user
     token, _ = ConfirmEmailToken.objects.get_or_create(user_id=user_id)
-
     msg = EmailMultiAlternatives(
         # title:
-        f"Thanks for the registration! Token for activation {token.user.email}",
+        f"Token for activation {token.user.email}",
         # message:
-        token.key,
+        f"{token.user} thanks for registration! \n{token.key}",
         # from:
         settings.EMAIL_HOST_USER,
         # to:
@@ -64,12 +63,13 @@ def new_order_signal(user_id, **kwargs):
     """
     # send an e-mail to the user
     user = User.objects.get(id=user_id)
+    order = Order.objects.get(user_id=user_id)
 
     msg = EmailMultiAlternatives(
         # title:
         f"Обновление статуса заказа",
         # message:
-        f'{user} Ваш заказ сформирован',
+        f'{user} Ваш заказ №{order} сформирован',
         # from:
         settings.EMAIL_HOST_USER,
         # to:

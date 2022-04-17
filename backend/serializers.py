@@ -19,7 +19,21 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('id', 'first_name', 'last_name', 'email', 'company', 'position', 'contacts')
+        fields = ('id', 'first_name', 'last_name', 'middle_name', 'email', 'company', 'position', 'contacts')
+        read_only_fields = ('id',)
+
+
+class AdressSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Contact
+        fields = ('city', 'street', 'house', 'structure', 'building', 'apartment')
+        read_only_fields = ('id',)
+
+
+class PhoneSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Contact
+        fields = ('phone')
         read_only_fields = ('id',)
 
 
@@ -55,12 +69,25 @@ class ProductParameterSerializer(serializers.ModelSerializer):
 
 class ProductInfoSerializer(serializers.ModelSerializer):
     product = ProductSerializer(read_only=True)
-    product_parameters = ProductParameterSerializer(read_only=True, many=True)
+    # product_parameters = ProductParameterSerializer(read_only=True, many=True)
+    shop = serializers.StringRelatedField()
 
     class Meta:
         model = ProductInfo
-        fields = ('id', 'model', 'product', 'shop', 'quantity', 'price', 'price_rrc', 'product_parameters',)
+        fields = ('id', 'model', 'shop', 'price', 'product',)
         read_only_fields = ('id',)
+
+
+class UsersInfoSerializer(serializers.ModelSerializer):
+    phone = ContactSerializer(read_only=True, many=True)
+
+    class Meta:
+        model = User
+        fields = ('last_name', 'first_name', 'middle_name', 'email', 'phone')
+        read_only_fields = ('id',)
+        extra_kwargs = {
+            'user': {'write_only': True}
+        }
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
@@ -79,11 +106,21 @@ class OrderItemCreateSerializer(OrderItemSerializer):
 
 class OrderSerializer(serializers.ModelSerializer):
     ordered_items = OrderItemCreateSerializer(read_only=True, many=True)
-
     total_sum = serializers.IntegerField()
-    contact = ContactSerializer(read_only=True)
+    user = UsersInfoSerializer(read_only=True)
+    # phone = serializers.SlugRelatedField(read_only=True, slug_field='phone')
+    contact = AdressSerializer(read_only=True)
 
     class Meta:
         model = Order
-        fields = ('id', 'ordered_items', 'state', 'dt', 'total_sum', 'contact',)
+        fields = ('id', 'dt', 'state', 'ordered_items', 'total_sum', 'user', 'contact',)
+        read_only_fields = ('id',)
+
+
+class OrdersSerializer(serializers.ModelSerializer):
+    total_sum = serializers.IntegerField()
+
+    class Meta:
+        model = Order
+        fields = ('id', 'dt', 'total_sum', 'state', 'total_sum',)
         read_only_fields = ('id',)
