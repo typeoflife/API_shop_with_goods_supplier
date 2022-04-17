@@ -8,22 +8,22 @@ categories:
     name: Flash-накопители
 
 goods:
-  - id: 4216292
+  - id: 5232314
     category: 224
     model: apple/iphone/xs-max
-    name: Смартфон Apple iPhone XS Max 512GB (золотистый)
-    price: 110000
+    name: Смартфон Apple iPhone XS Max 64GB (золотистый)
+    price: 120000
     price_rrc: 116990
-    quantity: 14
+    quantity: 140000
     parameters:
       "Диагональ (дюйм)": 6.5
       "Разрешение (пикс)": 2688x1242
       "Встроенная память (Гб)": 512
       "Цвет": золотистый
-  - id: 4216313
+  - id: 6123213
     category: 224
     model: apple/iphone/xr
-    name: Смартфон Apple iPhone XR 256GB (красный)
+    name: Смартфон Apple iPhone XR 64GB (красный)
     price: 65000
     price_rrc: 69990
     quantity: 9
@@ -32,10 +32,10 @@ goods:
       "Разрешение (пикс)": 1792x828
       "Встроенная память (Гб)": 256
       "Цвет": красный
-  - id: 4216226
+  - id: 7231352
     category: 224
     model: apple/iphone/xr
-    name: Смартфон Apple iPhone XR 256GB (черный)
+    name: Смартфон Apple iPhone XR 32GB (черный)
     price: 65000
     price_rrc: 69990
     quantity: 5
