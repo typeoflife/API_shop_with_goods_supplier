@@ -1,4 +1,4 @@
-shop: МТС
+shop: ДНС
 categories:
   - id: 224
     name: Смартфоны
@@ -8,51 +8,51 @@ categories:
     name: Flash-накопители
 
 goods:
-  - id: 4216292
+  - id: 6123244
     category: 224
     model: apple/iphone/xs-max
-    name: Смартфон Apple iPhone XS Max 512GB (золотистый)
-    price: 110000
-    price_rrc: 116990
-    quantity: 14
+    name: Смартфон Apple iPhone XS Max 32GB (золотистый)
+    price: 150000
+    price_rrc: 167990
+    quantity: 140000
     parameters:
       "Диагональ (дюйм)": 6.5
       "Разрешение (пикс)": 2688x1242
-      "Встроенная память (Гб)": 512
+      "Встроенная память (Гб)": 32
       "Цвет": золотистый
-  - id: 4216313
+  - id: 6152342
     category: 224
     model: apple/iphone/xr
-    name: Смартфон Apple iPhone XR 256GB (красный)
-    price: 65000
-    price_rrc: 69990
+    name: Смартфон Apple iPhone XR 32GB (красный)
+    price: 700000
+    price_rrc: 80000
     quantity: 9
     parameters:
       "Диагональ (дюйм)": 6.1
       "Разрешение (пикс)": 1792x828
-      "Встроенная память (Гб)": 256
+      "Встроенная память (Гб)": 32
       "Цвет": красный
-  - id: 4216226
+  - id: 8123412
     category: 224
     model: apple/iphone/xr
-    name: Смартфон Apple iPhone XR 256GB (черный)
+    name: Смартфон Apple iPhone XR 16GB (черный)
     price: 65000
     price_rrc: 69990
     quantity: 5
     parameters:
       "Диагональ (дюйм)": 6.1
       "Разрешение (пикс)": 1792x828
-      "Встроенная память (Гб)": 256
+      "Встроенная память (Гб)": 16
       "Цвет": черный
-  - id: 4672670
+  - id: 7236515
     category: 224
     model: apple/iphone/xr
-    name: Смартфон Apple iPhone XR 128GB (синий)
-    price: 60000
-    price_rrc: 64990
+    name: Смартфон Apple iPhone XR 32GB (синий)
+    price: 99999
+    price_rrc: 120000
     quantity: 7
     parameters:
       "Диагональ (дюйм)": 6.1
       "Разрешение (пикс)": 1792x828
-      "Встроенная память (Гб)": 256
+      "Встроенная память (Гб)": 32
       "Цвет": синий
