@@ -1,8 +1,11 @@
 # Верстальщик
+from django.db import IntegrityError
+from django.http import JsonResponse
 from rest_framework import serializers
+from rest_framework.decorators import action
 
 from backend.models import User, Category, Shop, ProductInfo, Product, ProductParameter, OrderItem, Order, Contact
-
+from backend.signals import new_user_registered, new_order
 
 class ContactSerializer(serializers.ModelSerializer):
     class Meta:
@@ -108,19 +111,24 @@ class OrderSerializer(serializers.ModelSerializer):
     ordered_items = OrderItemCreateSerializer(read_only=True, many=True)
     total_sum = serializers.IntegerField()
     user = UsersInfoSerializer(read_only=True)
-    # phone = serializers.SlugRelatedField(read_only=True, slug_field='phone')
+    phone = serializers.SerializerMethodField()
     contact = AdressSerializer(read_only=True)
 
     class Meta:
         model = Order
-        fields = ('id', 'dt', 'state', 'ordered_items', 'total_sum', 'user', 'contact',)
+        fields = ('id', 'dt', 'state', 'ordered_items', 'total_sum', 'user', 'phone', 'contact',)
         read_only_fields = ('id',)
+
+    def get_phone(self, obj):
+        return obj.contact.phone
 
 
 class OrdersSerializer(serializers.ModelSerializer):
-    total_sum = serializers.IntegerField()
+    total_sum = serializers.IntegerField(read_only=True)
+    state = serializers.CharField(read_only=True)
 
     class Meta:
         model = Order
-        fields = ('id', 'dt', 'total_sum', 'state', 'total_sum',)
+        fields = ('id', 'dt', 'total_sum', 'state',)
         read_only_fields = ('id',)
+
