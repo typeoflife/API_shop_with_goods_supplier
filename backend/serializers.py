@@ -16,6 +16,13 @@ class ContactSerializer(serializers.ModelSerializer):
             'user': {'write_only': True}
         }
 
+    # def validate(self, attrs):
+    #     print(attrs)
+    #     return attrs
+    # def create(self, validated_data):
+    #     print(validated_data)
+    #     return ContactSerializer.objects.create(**validated_data)
+
 
 class UserSerializer(serializers.ModelSerializer):
     contacts = ContactSerializer(read_only=True, many=True)

@@ -19,6 +19,7 @@ from yaml import load as load_yaml, Loader
 
 from backend.models import Shop, Category, Product, ProductInfo, Parameter, ProductParameter, Order, OrderItem, \
     Contact, ConfirmEmailToken
+from backend.permissions import IsOwner
 from backend.serializers import UserSerializer, CategorySerializer, ShopSerializer, ProductInfoSerializer, \
     OrderItemSerializer, OrderSerializer, ContactSerializer, OrdersSerializer
 from backend.signals import new_user_registered, new_order
@@ -215,7 +216,7 @@ class BasketView(APIView):
             'ordered_items__product_info__product__category',
             'ordered_items__product_info__product_parameters__parameter').annotate(
             total_sum=Sum(F('ordered_items__quantity') * F('ordered_items__product_info__price')) +
-                          Count('ordered_items__product_info__shop', distinct=True) * DELIVERY).distinct()
+                      Count('ordered_items__product_info__shop', distinct=True) * DELIVERY).distinct()
 
         serializer = OrderSerializer(basket, many=True)
         return Response(serializer.data)
@@ -407,26 +408,18 @@ class PartnerOrders(APIView):
         return Response(serializer.data)
 
 
-class ContactView(APIView):
-    """
-    Класс для работы с контактами покупателей
-    """
+class ContactViewset(viewsets.ModelViewSet):
+    """Viewset для контактов"""
 
-    # получить мои контакты
-    def get(self, request, *args, **kwargs):
-        if not request.user.is_authenticated:
-            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
-        contact = Contact.objects.filter(
-            user_id=request.user.id)
-        serializer = ContactSerializer(contact, many=True)
-        return Response(serializer.data)
+    permission_classes = [IsAuthenticated, IsOwner]
+    queryset = Contact.objects.all()
+    serializer_class = ContactSerializer
 
-    # добавить новый контакт
-    def post(self, request, *args, **kwargs):
-        if not request.user.is_authenticated:
-            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
+    def get_queryset(self):
+        return super().get_queryset().filter(user_id=self.request.user.id)
 
-        if {'city', 'street', 'phone'}.issubset(request.data):
+    def create(self, request, *args, **kwargs):
+        if not Contact.objects.filter(user_id=request.user.id):
             request.data._mutable = True
             request.data.update({'user': request.user.id})
             serializer = ContactSerializer(data=request.data)
@@ -435,15 +428,11 @@ class ContactView(APIView):
                 serializer.save()
                 return JsonResponse({'Status': True})
             else:
-                JsonResponse({'Status': False, 'Errors': serializer.errors})
+                return JsonResponse({'Status': False, 'Errors': serializer.errors})
 
-        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+        return JsonResponse({'Status': False, 'Errors': 'Вы уже создавали контакты для своего аккауна'})
 
-    # удалить контакт
     def delete(self, request, *args, **kwargs):
-        if not request.user.is_authenticated:
-            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
-
         items_sting = request.data.get('items')
         if items_sting:
             items_list = items_sting.split(',')
@@ -459,12 +448,7 @@ class ContactView(APIView):
                 return JsonResponse({'Status': True, 'Удалено объектов': deleted_count})
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
-    # редактировать контакт
     def put(self, request, *args, **kwargs):
-
-        if not request.user.is_authenticated:
-            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
-
         if 'id' in request.data:
             if request.data['id'].isdigit():
                 contact = Contact.objects.filter(id=request.data['id'], user_id=request.user.id).first()
@@ -479,26 +463,10 @@ class ContactView(APIView):
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
 
-class OrderViewset(viewsets.ModelViewSet):
-    """Viewset для заказов"""
-
-    permission_classes = [IsAuthenticated]
-    queryset = Order.objects.all()
-    serializer_class = OrderSerializer
-
-    # получить мой заказ + расчет общей стоимости с доставкой(в зависимости от кол-ва поставщиков)
-    def get_queryset(self):
-        return super().get_queryset().filter(user=self.request.user).exclude(state='basket').prefetch_related(
-            'ordered_items__product_info__product__category',
-            'ordered_items__product_info__product_parameters__parameter').annotate(
-            total_sum=Sum(F('ordered_items__quantity') * F('ordered_items__product_info__price')) +
-                          Count('ordered_items__product_info__shop', distinct=True) * DELIVERY).distinct()
-
-
 class OrdersViewset(viewsets.ModelViewSet):
-    """Viewset для заказов"""
+    """Viewset для заказов. В queryset фильтруем по ользователю, добавляем общую сумму с учетом доставки"""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsOwner]
     queryset = Order.objects.all()
     serializer_class = OrdersSerializer
 
@@ -507,7 +475,7 @@ class OrdersViewset(viewsets.ModelViewSet):
             'ordered_items__product_info__product__category',
             'ordered_items__product_info__product_parameters__parameter').annotate(
             total_sum=Sum(F('ordered_items__quantity') * F('ordered_items__product_info__price')) +
-                          Count('ordered_items__product_info__shop', distinct=True) * DELIVERY).distinct()
+                      Count('ordered_items__product_info__shop', distinct=True) * DELIVERY).distinct()
 
     def create(self, request, *args, **kwargs):
         try:
@@ -523,3 +491,8 @@ class OrdersViewset(viewsets.ModelViewSet):
                 return JsonResponse({'Status': True})
 
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = OrderSerializer(instance)
+        return Response(serializer.data)
