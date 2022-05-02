@@ -10,7 +10,6 @@ from django.http import JsonResponse
 from requests import get
 from rest_framework import viewsets
 from rest_framework.authtoken.models import Token
-from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -19,9 +18,10 @@ from yaml import load as load_yaml, Loader
 
 from backend.models import Shop, Category, Product, ProductInfo, Parameter, ProductParameter, Order, OrderItem, \
     Contact, ConfirmEmailToken
-from backend.permissions import IsOwner
+from backend.permissions import IsOwner, ShopPermission
 from backend.serializers import UserSerializer, CategorySerializer, ShopSerializer, ProductInfoSerializer, \
-    OrderItemSerializer, OrderSerializer, ContactSerializer, OrdersSerializer
+    OrderItemSerializer, OrderSerializer, ContactSerializer, OrdersSerializer, BasketSerializer, \
+    PartnerOrdersSerializer, PartnerOrderSerializer
 from backend.signals import new_user_registered, new_order
 
 DELIVERY = 300
@@ -157,32 +157,30 @@ class LoginAccount(APIView):
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
 
-class CategoryView(ListAPIView):
-    """
-    Класс для просмотра категорий
-    """
+class CategoryListViewset(viewsets.ModelViewSet):
+    """Viewset для просмотра категорий"""
+
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
 
 
-class ShopView(ListAPIView):
-    """
-    Класс для просмотра списка магазинов
-    """
-    queryset = Shop.objects.filter(state=True)
+class ShopListViewset(viewsets.ModelViewSet):
+    """Viewset для просмотра списка магазинов"""
+
+    queryset = Shop.objects.all()
     serializer_class = ShopSerializer
 
 
-class ProductInfoView(APIView):
-    """
-    Класс для поиска товаров
-    """
+class ProductInfoViewset(viewsets.ModelViewSet):
+    """Viewset для поиска товаров"""
 
-    def get(self, request, *args, **kwargs):
+    queryset = ProductInfo.objects.all()
+    serializer_class = ProductInfoSerializer
 
+    def get_queryset(self):
         query = Q(shop__state=True)
-        shop_id = request.query_params.get('shop_id')
-        category_id = request.query_params.get('category_id')
+        shop_id = self.request.query_params.get('shop_id')
+        category_id = self.request.query_params.get('category_id')
 
         if shop_id:
             query = query & Q(shop_id=shop_id)
@@ -190,52 +188,39 @@ class ProductInfoView(APIView):
         if category_id:
             query = query & Q(product__category_id=category_id)
 
-        # фильтруем и отбрасываем дуликаты
-        queryset = ProductInfo.objects.filter(
+        return super().get_queryset().filter(
             query).select_related(
             'shop', 'product__category').prefetch_related(
             'product_parameters__parameter').distinct()
 
-        serializer = ProductInfoSerializer(queryset, many=True)
 
-        return Response(serializer.data)
+class BasketViewset(viewsets.ModelViewSet):
+    """Viewset для корзины"""
 
+    permission_classes = [IsAuthenticated, IsOwner]
+    queryset = Order.objects.all()
+    serializer_class = BasketSerializer
 
-class BasketView(APIView):
-    """
-    Класс для работы с корзиной пользователя
-    """
-
-    # получить корзину + расчет общей стоимости с доставкой(в зависимости от кол-ва поставщиков)
-    def get(self, request, *args, **kwargs):
-        if not request.user.is_authenticated:
-            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
-
-        basket = Order.objects.filter(
-            user_id=request.user.id, state='basket').prefetch_related(
-            'ordered_items__product_info__product__category',
-            'ordered_items__product_info__product_parameters__parameter').annotate(
+    def get_queryset(self):
+        return super().get_queryset().filter(
+            user_id=self.request.user.id, state='basket').annotate(
+            sum=Sum(F('ordered_items__quantity') * F('ordered_items__product_info__price'))).annotate(
+            delivery=Count('ordered_items__product_info__shop', distinct=True) * DELIVERY).annotate(
             total_sum=Sum(F('ordered_items__quantity') * F('ordered_items__product_info__price')) +
-                      Count('ordered_items__product_info__shop', distinct=True) * DELIVERY).distinct()
-
-        serializer = OrderSerializer(basket, many=True)
-        return Response(serializer.data)
+                      Count('ordered_items__product_info__shop', distinct=True) * DELIVERY)
 
     # добавить товары в корзину
-    def post(self, request, *args, **kwargs):
-        if not request.user.is_authenticated:
-            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
-
+    def create(self, request, *args, **kwargs):
         items_sting = request.data.get('items')
-
         if items_sting:
             try:
                 items_dict = load_json(items_sting)
             except ValueError:
                 return JsonResponse({'Status': False, 'Errors': 'Неверный формат запроса'})
             else:
+                contact_id = Contact.objects.filter(user_id=request.user.id).values_list('pk', flat=True)[0]
                 basket, _ = Order.objects.get_or_create(user_id=request.user.id, state='basket',
-                                                        contact_id=request.user.id)
+                                                        contact_id=contact_id)
                 objects_created = 0
                 for order_item in items_dict:
                     order_item.update({'order': basket.id})
@@ -249,7 +234,6 @@ class BasketView(APIView):
                             objects_created += 1
 
                     else:
-
                         JsonResponse({'Status': False, 'Errors': serializer.errors})
 
                 return JsonResponse({'Status': True, 'Создано объектов': objects_created})
@@ -257,9 +241,6 @@ class BasketView(APIView):
 
     # удалить товары из корзины
     def delete(self, request, *args, **kwargs):
-        if not request.user.is_authenticated:
-            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
-
         items_sting = request.data.get('items')
         if items_sting:
             items_list = items_sting.split(',')
@@ -278,9 +259,6 @@ class BasketView(APIView):
 
     # редактировать товары в корзине
     def put(self, request, *args, **kwargs):
-        if not request.user.is_authenticated:
-            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
-
         items_sting = request.data.get('items')
 
         if items_sting:
@@ -300,18 +278,14 @@ class BasketView(APIView):
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
 
-class PartnerUpdate(APIView):
-    """
-    Класс для обновления прайса от поставщика
-    """
+class PartnerUpdateViewset(viewsets.ModelViewSet):
+    """Viewset для обновления прайса"""
 
-    def post(self, request, *args, **kwargs):
-        if not request.user.is_authenticated:
-            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
+    permission_classes = [IsAuthenticated, IsOwner, ShopPermission]
+    queryset = Shop.objects.all()
+    serializer_class = ShopSerializer
 
-        # if request.user.type != 'shop':
-        #     return JsonResponse({'Status': False, 'Error': 'Только для магазинов'}, status=403)
-
+    def create(self, request, *args, **kwargs):
         url = request.data.get('url')
         if url:
             validate_url = URLValidator()
@@ -351,30 +325,15 @@ class PartnerUpdate(APIView):
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
 
-class PartnerState(APIView):
-    """
-    Класс для работы со статусом поставщика
-    """
+class PartnerStateViewset(viewsets.ModelViewSet):
+    """Viewset для работы со статусом поставщика"""
 
-    # получить текущий статус
-    def get(self, request, *args, **kwargs):
-        if not request.user.is_authenticated:
-            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
-
-        if request.user.type != 'shop':
-            return JsonResponse({'Status': False, 'Error': 'Только для магазинов'}, status=403)
-
-        shop = request.user.shop
-        serializer = ShopSerializer(shop)
-        return Response(serializer.data)
+    permission_classes = [IsAuthenticated, IsOwner, ShopPermission]
+    queryset = Shop.objects.all()
+    serializer_class = ShopSerializer
 
     # изменить текущий статус
-    def post(self, request, *args, **kwargs):
-        if not request.user.is_authenticated:
-            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
-
-        if request.user.type != 'shop':
-            return JsonResponse({'Status': False, 'Error': 'Только для магазинов'}, status=403)
+    def create(self, request, *args, **kwargs):
         state = request.data.get('state')
         if state:
             try:
@@ -386,25 +345,23 @@ class PartnerState(APIView):
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
 
-class PartnerOrders(APIView):
-    """
-    Класс для получения заказов поставщиками
-    """
+class PartnerOrdersViewset(viewsets.ModelViewSet):
+    """Viewset ля получения заказов поставщиками"""
 
-    def get(self, request, *args, **kwargs):
-        if not request.user.is_authenticated:
-            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
+    permission_classes = [IsAuthenticated, IsOwner, ShopPermission]
+    queryset = Order.objects.all()
+    serializer_class = PartnerOrdersSerializer
 
-        if request.user.type != 'shop':
-            return JsonResponse({'Status': False, 'Error': 'Только для магазинов'}, status=403)
-
-        order = Order.objects.filter(
-            ordered_items__product_info__shop__user_id=request.user.id).exclude(state='basket').prefetch_related(
+    def get_queryset(self):
+        return super().get_queryset().filter(
+            ordered_items__product_info__shop__user_id=self.request.user.id).exclude(state='basket').prefetch_related(
             'ordered_items__product_info__product__category',
-            'ordered_items__product_info__product_parameters__parameter').select_related('contact').annotate(
-            total_sum=Sum(F('ordered_items__quantity') * F('ordered_items__product_info__price'))).distinct()
+            'ordered_items__product_info__product_parameters__parameter').annotate(
+            total_sum=Sum(F('ordered_items__quantity') * F('ordered_items__product_info__price')))
 
-        serializer = OrderSerializer(order, many=True)
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = PartnerOrderSerializer(instance)
         return Response(serializer.data)
 
 
