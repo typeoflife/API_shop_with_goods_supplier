@@ -1,11 +1,7 @@
 # Верстальщик
-from django.db import IntegrityError
-from django.http import JsonResponse
 from rest_framework import serializers
-from rest_framework.decorators import action
 
 from backend.models import User, Category, Shop, ProductInfo, Product, ProductParameter, OrderItem, Order, Contact
-from backend.signals import new_user_registered, new_order
 
 
 class ContactSerializer(serializers.ModelSerializer):
@@ -16,13 +12,6 @@ class ContactSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             'user': {'write_only': True}
         }
-
-    # def validate(self, attrs):
-    #     print(attrs)
-    #     return attrs
-    # def create(self, validated_data):
-    #     print(validated_data)
-    #     return ContactSerializer.objects.create(**validated_data)
 
 
 class UserSerializer(serializers.ModelSerializer):

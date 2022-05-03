@@ -7,15 +7,14 @@ from django.core.validators import URLValidator
 from django.db import IntegrityError
 from django.db.models import Q, Sum, F, Count
 from django.http import JsonResponse
+from django_rest_passwordreset.views import User
 from requests import get
 from rest_framework import viewsets
 from rest_framework.authtoken.models import Token
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.views import APIView
 from ujson import loads as load_json
 from yaml import load as load_yaml, Loader
-
 from backend.models import Shop, Category, Product, ProductInfo, Parameter, ProductParameter, Order, OrderItem, \
     Contact, ConfirmEmailToken
 from backend.permissions import IsOwner, ShopPermission
@@ -27,14 +26,13 @@ from backend.signals import new_user_registered, new_order
 DELIVERY = 300
 
 
-class RegisterAccount(APIView):
-    """
-    Для регистрации покупателей
-    """
+class RegisterAccountViewset(viewsets.ModelViewSet):
+    """Viewset для регистрации покупателей"""
 
-    # Регистрация методом POST
-    def post(self, request, *args, **kwargs):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
 
+    def create(self, request, *args, **kwargs):
         # проверяем обязательные аргументы
         if {'first_name', 'last_name', 'middle_name', 'email', 'password', 'company', 'position'}.issubset(
                 request.data):
@@ -68,14 +66,13 @@ class RegisterAccount(APIView):
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
 
-class ConfirmAccount(APIView):
-    """
-    Класс для подтверждения почтового адреса
-    """
+class ConfirmAccountViewset(viewsets.ModelViewSet):
+    """Viewset для подтверждения аккаунта"""
 
-    # Регистрация методом POST
-    def post(self, request, *args, **kwargs):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
 
+    def create(self, request, *args, **kwargs):
         # проверяем обязательные аргументы
         if {'email', 'token'}.issubset(request.data):
 
@@ -93,25 +90,19 @@ class ConfirmAccount(APIView):
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
 
-class AccountDetails(APIView):
-    """
-    Класс для работы данными пользователя
-    """
+class AccountDetailsViewset(viewsets.ModelViewSet):
+    """Viewset для работы данными пользователя"""
 
-    # получить данные
-    def get(self, request, *args, **kwargs):
-        if not request.user.is_authenticated:
-            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated]
 
-        serializer = UserSerializer(request.user)
-        return Response(serializer.data)
+    def get_queryset(self):
+        return super().get_queryset().filter(id=self.request.user.id)
 
-    # Редактирование методом POST
-    def post(self, request, *args, **kwargs):
-        if not request.user.is_authenticated:
-            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
+    # Редактирование методом create
+    def create(self, request, *args, **kwargs):
         # проверяем обязательные аргументы
-
         if 'password' in request.data:
             errors = {}
             # проверяем пароль на сложность
@@ -135,24 +126,21 @@ class AccountDetails(APIView):
             return JsonResponse({'Status': False, 'Errors': user_serializer.errors})
 
 
-class LoginAccount(APIView):
-    """
-    Класс для авторизации пользователей
-    """
+class LoginAccountViewset(viewsets.ModelViewSet):
+    """Viewset для авторизации пользователей"""
 
-    # Авторизация методом POST
-    def post(self, request, *args, **kwargs):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
 
+    def create(self, request, *args, **kwargs):
         if {'email', 'password'}.issubset(request.data):
             user = authenticate(request, username=request.data['email'], password=request.data['password'])
-
             if user is not None:
                 if user.is_active:
                     token, _ = Token.objects.get_or_create(user=user)
-
                     return JsonResponse({'Status': True, 'Token': token.key})
 
-            return JsonResponse({'Status': False, 'Errors': 'Не верные логин|пароль. Либо аккаунт не активирован'})
+            return JsonResponse({'Status': False, 'Errors': 'Не верные логин|пароль, либо аккаунт не активирован'})
 
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
@@ -440,6 +428,7 @@ class OrdersViewset(viewsets.ModelViewSet):
                 user_id=request.user.id, id=request.data['id']).update(
                 contact_id=request.data['contact'],
                 state='new')
+
         except IntegrityError as error:
             return JsonResponse({'Status': False, 'Errors': 'Неправильно указаны аргументы'})
         else:
