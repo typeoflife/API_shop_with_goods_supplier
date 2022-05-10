@@ -78,23 +78,16 @@ WSGI_APPLICATION = 'my_diplom.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
 
-#sqlite
-DATABASES = {
-'default': {
-    'ENGINE': 'django.db.backends.sqlite3',
-    'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
-}
-}
 
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': 'order_goods',
-#         'USER': 'postgres',
-#         'PASSWORD': '1234',
-#         'HOST': 'localhost',
-#     }
-# }
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'order_goods',
+        'USER': 'postgres',
+        'PASSWORD': '****',
+        'HOST': 'localhost',
+    }
+}
 
 
 # Password validation
@@ -169,6 +162,9 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {
         'user': '30/minute',
         'anon': '10/minute'
-    }
+    },
+
+    'TEST_REQUEST_DEFAULT_FORMAT': 'json',
+
 
 }

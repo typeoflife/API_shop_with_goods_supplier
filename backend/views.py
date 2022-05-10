@@ -162,7 +162,7 @@ class ShopListViewset(viewsets.ModelViewSet):
 class ProductInfoViewset(viewsets.ModelViewSet):
     """Viewset для поиска товаров"""
 
-    queryset = ProductInfo.objects.all()
+    queryset = ProductInfo.objects.all().order_by('id')
     serializer_class = ProductInfoSerializer
 
     def get_queryset(self):
@@ -186,7 +186,7 @@ class BasketViewset(viewsets.ModelViewSet):
     """Viewset для корзины"""
 
     permission_classes = [IsAuthenticated, IsOwner]
-    queryset = Order.objects.all()
+    queryset = Order.objects.all().order_by('id')
     serializer_class = BasketSerializer
 
     def get_queryset(self):
@@ -412,7 +412,7 @@ class OrdersViewset(viewsets.ModelViewSet):
     """Viewset для заказов. В queryset фильтруем по ользователю, добавляем общую сумму с учетом доставки"""
 
     permission_classes = [IsAuthenticated, IsOwner]
-    queryset = Order.objects.all()
+    queryset = Order.objects.all().order_by('id')
     serializer_class = OrdersSerializer
 
     def get_queryset(self):
