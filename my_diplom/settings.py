@@ -84,7 +84,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'order_goods',
         'USER': 'postgres',
-        'PASSWORD': '****',
+        'PASSWORD': '***',
         'HOST': 'localhost',
     }
 }
@@ -164,7 +164,7 @@ REST_FRAMEWORK = {
         'anon': '10/minute'
     },
 
-    'TEST_REQUEST_DEFAULT_FORMAT': 'json',
+    # 'TEST_REQUEST_DEFAULT_FORMAT': 'json',
 
 
 }

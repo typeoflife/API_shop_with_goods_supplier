@@ -159,6 +159,26 @@ def test_get_basket(client_token, update_pricelist):
 
 
 @pytest.mark.django_db
+def test_get_product_in_basket(client_token, update_pricelist, contacts):
+    data = {'items': ['[{"product_info": "2", "quantity": "2"},'
+                      '{"product_info": "3", "quantity": "2"}]']}
+    client_token.post('/api/v1/basket/', data)
+    response = client_token.get('/api/v1/basket/')
+    data = response.json()
+    assert data['count'] == 1
+
+
+@pytest.mark.django_db
+def test_change_product_in_basket(client_token, update_pricelist, contacts):
+    data = {'items': ['[{"product_info": "2", "quantity": "2"},'
+                      '{"product_info": "3", "quantity": "2"}]']}
+    client_token.post('/api/v1/basket/', data)
+    response = client_token.put('/api/v1/basket/', {'items': ['[{"id":  2,"quantity": 4}]']})
+    data = response.json()
+    assert data['Status'] == True
+
+
+@pytest.mark.django_db
 def test_get_order(client_token, update_pricelist):
     response = client_token.get('/api/v1/orders/1/')
     data = response.json()
