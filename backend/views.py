@@ -7,6 +7,7 @@ from django.core.validators import URLValidator
 from django.db import IntegrityError
 from django.db.models import Q, Sum, F, Count
 from django.http import JsonResponse
+from django_rest_passwordreset.models import ResetPasswordToken
 from django_rest_passwordreset.views import User
 from requests import get
 from rest_framework import viewsets
@@ -21,7 +22,7 @@ from backend.permissions import IsOwner, ShopPermission
 from backend.serializers import UserSerializer, CategorySerializer, ShopSerializer, ProductInfoSerializer, \
     OrderItemSerializer, OrderSerializer, ContactSerializer, OrdersSerializer, BasketSerializer, \
     PartnerOrdersSerializer, PartnerOrderSerializer
-from backend.signals import new_user_registered, new_order
+from backend.mail_service import new_user_registered, password_reset_token_created, new_order
 
 DELIVERY = 300
 
@@ -58,7 +59,7 @@ class RegisterAccountViewset(viewsets.ModelViewSet):
                     user = user_serializer.save()
                     user.set_password(request.data['password'])
                     user.save()
-                    new_user_registered.send(sender=self.__class__, user_id=user.id)
+                    new_user_registered.delay(user_email=user.email, user_id=user.id)
                     return JsonResponse({'Status': True})
                 else:
                     return JsonResponse({'Status': False, 'Errors': user_serializer.errors})
@@ -141,6 +142,27 @@ class LoginAccountViewset(viewsets.ModelViewSet):
                     return JsonResponse({'Status': True, 'Token': token.key})
 
             return JsonResponse({'Status': False, 'Errors': 'Не верные логин|пароль, либо аккаунт не активирован'})
+
+        return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+
+
+class PasswordResetCustom(viewsets.ModelViewSet):
+    """Viewset для восстановления пароля пользователей"""
+
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+
+    def create(self, request, *args, **kwargs):
+        if {'email'}.issubset(request.data):
+            user = User.objects.filter(email=request.data['email'])
+            if len(user) != 0:
+                token = ResetPasswordToken.objects.create(
+                    user=user[0])
+                print(token.key)
+                password_reset_token_created.delay(reset_password_token=token.key, user_email=request.data['email'])
+                return JsonResponse({'Status': 'Писльмо для восстановления доступа отправлено на почту'})
+
+            return JsonResponse({'Status': False, 'Errors': 'Нет такого пользователя'})
 
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
@@ -433,7 +455,7 @@ class OrdersViewset(viewsets.ModelViewSet):
             return JsonResponse({'Status': False, 'Errors': 'Неправильно указаны аргументы'})
         else:
             if is_updated:
-                new_order.send(sender=self.__class__, user_id=request.user.id)
+                new_order.delay(user_id=request.user.id)
                 return JsonResponse({'Status': True})
 
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
