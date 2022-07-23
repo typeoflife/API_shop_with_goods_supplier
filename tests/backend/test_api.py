@@ -29,7 +29,7 @@ def user():
 def user_shop():
     return User.objects.create_user(
         first_name='Ivan',
-        last_name='Dmitriev',
+        last_name='Petrov',
         middle_name='Semenovich',
         password='12345678W',
         email='ali@eoscast.com',
