@@ -14,7 +14,7 @@ def client():
 def user():
     return User.objects.create_user(
         first_name='Maxim',
-        last_name='Petrov',
+        last_name='Dmitriev',
         middle_name='Denisovich',
         password='12345678Q',
         email='wehor73348@eoscast.com',
